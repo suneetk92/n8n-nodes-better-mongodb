@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import type { ClientSession } from 'mongodb';
-import { getClient, resolveDb, serialize, toFieldSet } from './GenericFunctions';
+import { getClient, resolveDb, serialize, toFieldSet, toFieldSetCI } from './GenericFunctions';
 import type { OutputFormat } from './GenericFunctions';
 import { properties } from './descriptions';
 import { runOperation, runsOnce } from './operations';
@@ -51,7 +51,7 @@ export class BetterMongoDb implements INodeType {
 					session,
 					convert: {
 						idFields: toFieldSet(options.objectIdFields ?? '_id'),
-						dateFields: toFieldSet(options.dateFields),
+						dateFields: toFieldSetCI(options.dateFields),
 					},
 					options,
 					items,

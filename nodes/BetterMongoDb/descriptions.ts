@@ -161,7 +161,7 @@ export const properties: INodeProperties[] = [
 			['List Collections', 'listCollections', 'List collections and views'],
 			['List Databases', 'listDatabases', 'List databases on the server'],
 			['Ping', 'ping', 'Check connectivity'],
-			['Query Stats', 'queryStats', 'Query shape statistics ($queryStats, enabled by default in 9.0)'],
+			['Query Stats', 'queryStats', 'Query shape statistics ($queryStats, enabled by default in 9.0; samples ~1% of operations)'],
 			['Run Command', 'runCommand', 'Run any database command'],
 		],
 		'listCollections',
@@ -601,7 +601,7 @@ export const properties: INodeProperties[] = [
 				name: 'dateFields',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated field names (at any depth) whose ISO string values are converted to BSON Date',
+				description: 'Comma-separated field names (at any depth, case-insensitive) whose ISO string values are converted to BSON Date. Required for time series timeField. Invalid dates raise an error.',
 			},
 			{
 				displayName: 'Convert ObjectId Fields',

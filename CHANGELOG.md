@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0
+
+- Updated the `mongodb` driver to 7.9.0 (fully compatible with MongoDB 9.0; requires Node.js 20.19+).
+- Fixed *Convert Date Fields* silently skipping values: field names now match case-insensitively and ignore surrounding spaces, objects from other JS contexts are converted, and an unparseable date now raises an error naming the field instead of being sent to the server as a string (which time series collections reject).
+- Documented MongoDB 9.0 behavior (memory limits, transaction cap, `$queryStats` sampling, `querySettings` via `runCommand`).
+
 ## 1.0.0
 
 Initial release of **Better MongoDB** and **Better MongoDB Trigger**. Both reuse n8n's built-in MongoDB credential.

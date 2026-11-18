@@ -27,6 +27,18 @@ Extras: `explain`, collation, hint, `let`, `maxTimeMS`, read/write concern, read
 
 Change stream trigger for a collection, a database or the entire cluster (replica set or sharded cluster required). Filter by event type, add `$match`/`$project` stages, choose full-document lookup, pre-images (`changeStreamPreAndPostImages`), and expanded DDL events. The resume token is stored in workflow static data, so events are not lost across restarts or n8n downtime (as long as the oplog still covers the gap).
 
+## MongoDB 9.0 notes
+
+Requires MongoDB 4.2+ (tested against 9.0) and Node.js 20.19+ (driver 7.9). On 9.0:
+
+- Each operation is capped at the larger of 1 GB or 20% of RAM; heavier queries fail with error 146 or 292. Use *Allow Disk Use* or restructure the pipeline.
+- `maxConcurrentMultiDocumentTransactions` defaults to 10000; *Run in Transaction* fails with `TooManyOpenTransactions` beyond that.
+- `$queryStats` samples about 1% of operations by default, so results are a subset.
+- `$function`, `$accumulator` and `$where` are no longer deprecated.
+- Time series collections can be renamed.
+- Per-operation `querySettings` is not exposed as an option (the driver does not forward it); send it with *Run Command*.
+- Time series `timeField` must be a BSON Date: list it in *Convert Date Fields* or send `{"$date": "..."}`.
+
 ## Not included
 
 Queryable Encryption and client-side field-level encryption need native `libmongocrypt` and are not supported. Use `runCommand` or the aggregation passthrough for anything else.

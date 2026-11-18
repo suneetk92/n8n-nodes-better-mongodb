@@ -83,8 +83,12 @@ export function parseEjson(node: INode, value: unknown, field: string, itemIndex
 	}
 }
 
-const isPlain = (v: unknown): v is Record<string, unknown> =>
-	v !== null && typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype;
+// Realm-safe: objects created in another JS context (e.g. by n8n expressions) have a different Object.prototype.
+const isPlain = (v: unknown): v is Record<string, unknown> => {
+	if (v === null || typeof v !== 'object') return false;
+	const proto = Object.getPrototypeOf(v);
+	return proto === null || proto === Object.prototype || Object.getPrototypeOf(proto) === null;
+};
 
 function mapDeep(v: unknown, fn: (x: unknown) => unknown): unknown {
 	if (Array.isArray(v)) return v.map((x) => mapDeep(x, fn));
@@ -93,10 +97,13 @@ function mapDeep(v: unknown, fn: (x: unknown) => unknown): unknown {
 }
 
 const toObjectId = (v: unknown) => (typeof v === 'string' && HEX24.test(v) ? new ObjectId(v) : v);
-const toDate = (v: unknown) => {
+const toDate = (field: string) => (v: unknown) => {
 	if (typeof v !== 'string') return v;
 	const d = new Date(v);
-	return Number.isNaN(d.getTime()) ? v : d;
+	if (Number.isNaN(d.getTime())) {
+		throw new Error(`Convert Date Fields: value "${v}" of field "${field}" is not a valid date`);
+	}
+	return d;
 };
 
 export function convertFields(value: unknown, opts: ConvertOptions): unknown {
@@ -106,12 +113,17 @@ export function convertFields(value: unknown, opts: ConvertOptions): unknown {
 		const out: Record<string, unknown> = {};
 		for (const [k, v] of Object.entries(value)) {
 			if (opts.idFields.has(k)) out[k] = mapDeep(v, toObjectId);
-			else if (opts.dateFields.has(k)) out[k] = mapDeep(v, toDate);
+			else if (opts.dateFields.has(k.trim().toLowerCase())) out[k] = mapDeep(v, toDate(k));
 			else out[k] = convertFields(v, opts);
 		}
 		return out;
 	}
 	return value;
+}
+
+/** Like toFieldSet, but lower-cased so field names match case-insensitively. */
+export function toFieldSetCI(csv: unknown): Set<string> {
+	return new Set([...toFieldSet(csv)].map((x) => x.toLowerCase()));
 }
 
 export function toFieldSet(csv: unknown): Set<string> {
