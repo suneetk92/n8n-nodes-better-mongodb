@@ -114,8 +114,12 @@ export function convertFields(value: unknown, opts: ConvertOptions): unknown {
 	if (isPlain(value)) {
 		const out: Record<string, unknown> = {};
 		for (const [k, v] of Object.entries(value)) {
-			if (opts.idFields.has(k)) out[k] = mapDeep(v, toObjectId);
-			else if (opts.dateFields.has(k.trim().toLowerCase())) out[k] = mapDeep(v, toDate(k));
+			const isId = opts.idFields.has(k);
+			const isDate = opts.dateFields.has(k.trim().toLowerCase());
+			// A field listed in both lists gets both conversions (hex string -> ObjectId, ISO string -> Date).
+			if (isId && isDate) out[k] = mapDeep(v, (x) => toDate(k)(toObjectId(x)));
+			else if (isId) out[k] = mapDeep(v, toObjectId);
+			else if (isDate) out[k] = mapDeep(v, toDate(k));
 			else out[k] = convertFields(v, opts);
 		}
 		return out;
