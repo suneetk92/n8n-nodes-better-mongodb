@@ -72,19 +72,19 @@ export class BetterMongoDbTrigger implements INodeType {
 				description: 'Which operation types trigger the workflow. Leave empty for all. DDL events (create, modify, ...) need "Show Expanded Events".',
 			},
 			{
-				displayName: 'Additional Pipeline',
-				name: 'pipeline',
-				type: 'json',
-				default: '[]',
-				description: 'Extra change stream stages ($match, $project, $addFields, $redact, $set, $unset, $replaceRoot), e.g. [{"$match": {"fullDocument.status": "paid"}}]',
-			},
-			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
 				placeholder: 'Add Option',
 				default: {},
 				options: [
+					{
+						displayName: 'Additional Pipeline',
+						name: 'pipeline',
+						type: 'json',
+						default: '[]',
+						description: 'Extra change stream stages ($match, $project, $addFields, $redact, $set, $unset, $replaceRoot), e.g. [{"$match": {"fullDocument.status": "paid"}}]',
+					},
 					{
 						displayName: 'Convert ObjectId Fields (In Pipeline)',
 						name: 'objectIdFields',
@@ -160,7 +160,7 @@ export class BetterMongoDbTrigger implements INodeType {
 		const isManual = this.getMode() === 'manual';
 		const staticData = this.getWorkflowStaticData('node') as Record<string, any>;
 
-		const extra = parseEjson(this.getNode(), this.getNodeParameter('pipeline', '[]'), 'pipeline', 0);
+		const extra = parseEjson(this.getNode(), options.pipeline ?? this.getNodeParameter('pipeline', '[]'), 'pipeline', 0);
 		const pipeline: any[] = [
 			...(eventTypes.length ? [{ $match: { operationType: { $in: eventTypes } } }] : []),
 			...((convertFields(extra ?? [], { idFields: toFieldSet(options.objectIdFields ?? '_id'), dateFields: new Set() }) as any[]) ?? []),
