@@ -27,6 +27,12 @@ Extras: `explain`, collation, hint, `let`, `maxTimeMS`, read/write concern, read
 
 Change stream trigger for a collection, a database or the entire cluster (replica set or sharded cluster required). Filter by event type, add `$match`/`$project` stages, choose full-document lookup, pre-images (`changeStreamPreAndPostImages`), and expanded DDL events. The resume token is stored in workflow static data, so events are not lost across restarts or n8n downtime (as long as the oplog still covers the gap).
 
+### Controlling `_id`
+
+For input-item sources (insertOne, insertMany, bulk upsert), under **Options**:
+
+- **Custom ID**: an expression evaluated per item, for example `{{ $json['Instrument Identifier'] + '_' + $json.Side }}`. A 24-character hex string becomes an ObjectId; anything else is stored as given. Pair it with bulk upsert (match field `_id`) for idempotent loads.
+
 ## MongoDB 9.0 notes
 
 Requires MongoDB 4.2+ (tested against 9.0) and Node.js 20.19+ (driver 7.9). On 9.0:

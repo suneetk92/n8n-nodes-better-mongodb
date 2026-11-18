@@ -611,6 +611,14 @@ export const properties: INodeProperties[] = [
 				description: 'Comma-separated field names (at any depth) whose 24-hex string values are converted to ObjectId. Set empty to disable. Use {"$oid": "..."} for explicit conversion anywhere.',
 			},
 			{
+				displayName: 'Custom ID',
+				name: 'customId',
+				type: 'string',
+				default: '',
+				placeholder: "={{ $json['Instrument Identifier'] }}",
+				description: 'Value to use as _id for each input item (evaluated per item, so expressions work). A 24-character hex string becomes an ObjectId, anything else is stored as given. Input-item sources of insertOne, insertMany and bulkUpsert only.',
+			},
+			{
 				displayName: 'On Invalid Date',
 				name: 'invalidDates',
 				type: 'options',

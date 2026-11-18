@@ -44,14 +44,27 @@ export interface Skipped {
  * Converts the given input items. With Options > On Invalid Date = "Skip Item", items whose date fields
  * cannot be parsed are left out and reported in `skipped` instead of failing the whole run.
  */
-function convMany(c: Ctx, idxs: number[]): { docs: any[]; kept: number[]; skipped: Skipped[] } {
+/**
+ * Applies Options > "Custom ID" (evaluated per item, so expressions work) to a converted document.
+ * A 24-hex value becomes an ObjectId, anything else is kept as given.
+ */
+function applyId(c: Ctx, idx: number, doc: any): void {
+	const custom = (c.fn.getNodeParameter('options', idx, {}) as IDataObject).customId;
+	if (custom === undefined || custom === null || String(custom).trim() === '') return;
+	const v = typeof custom === 'string' ? custom.trim() : custom;
+	doc._id = typeof v === 'string' && HEX24.test(v) ? new ObjectId(v) : v;
+}
+
+function convMany(c: Ctx, idxs: number[], withId = false): { docs: any[]; kept: number[]; skipped: Skipped[] } {
 	const skip = c.options.invalidDates === 'skip';
 	const docs: any[] = [];
 	const kept: number[] = [];
 	const skipped: Skipped[] = [];
 	for (const idx of idxs) {
 		try {
-			docs.push(convertFields(c.items[idx].json, c.convert));
+			const doc = convertFields(c.items[idx].json, c.convert) as any;
+			if (withId) applyId(c, idx, doc);
+			docs.push(doc);
 			kept.push(idx);
 		} catch (error) {
 			if (skip && error instanceof InvalidDateError) skipped.push({ item: idx, reason: error.message });
@@ -160,7 +173,7 @@ const handlers: Record<string, Handler> = {
 	'document.insertOne': async (c) => {
 		let doc: any;
 		if (p(c, 'documentSource', 'json') === 'input') {
-			const { docs, skipped } = convMany(c, [c.i]);
+			const { docs, skipped } = convMany(c, [c.i], true);
 			if (!docs.length) return one({ acknowledged: false, insertedId: null, ...skippedOut(skipped) });
 			doc = docs[0];
 		} else doc = pj(c, 'document');
@@ -170,7 +183,7 @@ const handlers: Record<string, Handler> = {
 	'document.insertMany': async (c) => {
 		let docs: any;
 		let skipped: Skipped[] = [];
-		if (p(c, 'documentSource', 'json') === 'input') ({ docs, skipped } = convMany(c, allIdx(c)));
+		if (p(c, 'documentSource', 'json') === 'input') ({ docs, skipped } = convMany(c, allIdx(c), true));
 		else docs = pj(c, 'documents');
 		if (!Array.isArray(docs)) throw new NodeOperationError(c.fn.getNode(), '"Documents" must be a JSON array');
 		if (!docs.length && skipped.length) return one({ acknowledged: false, insertedCount: 0, ...skippedOut(skipped) });
@@ -269,7 +282,7 @@ const handlers: Record<string, Handler> = {
 	'bulk.bulkUpsert': async (c) => {
 		const keys = [...toFieldSet(p(c, 'matchFields', '_id'))];
 		const replace = p(c, 'upsertMode', 'set') === 'replace';
-		const { docs: converted, kept, skipped } = convMany(c, allIdx(c));
+		const { docs: converted, kept, skipped } = convMany(c, allIdx(c), true);
 		const ops = converted.map((doc: Record<string, any>, n: number) => {
 			const idx = kept[n];
 			const filter: Record<string, any> = {};
