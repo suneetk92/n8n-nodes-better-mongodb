@@ -1,6 +1,6 @@
 {
 	"name": "n8n-nodes-better-mongodb",
-	"version": "1.1.0",
+	"version": "0.0.0",
 	"description": "n8n MongoDB nodes: full CRUD, aggregation, bulk writes, transactions, indexes, Atlas/vector search, GridFS, BSON types (ObjectId, Date, Decimal128, ...) and a change stream trigger",
 	"license": "MIT",
 	"keywords": [

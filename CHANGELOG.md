@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.3
+
+- Publish workflow now sets the package version from the git tag, so the npm version always matches the tag (1.1.1 and 1.1.2 failed to publish because `package.json` still said 1.1.0).
+- Includes all changes from 1.1.1 and 1.1.2: clearer date conversion errors (item and value), the trigger's *Additional Pipeline* moved into *Options*, relaxed `n8n-workflow` peer dependency, updated dev dependencies.
+
 ## 1.1.0
 
 - Updated the `mongodb` driver to 7.9.0 (fully compatible with MongoDB 9.0; requires Node.js 20.19+).
