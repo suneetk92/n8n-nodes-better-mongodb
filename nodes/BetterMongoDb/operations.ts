@@ -35,6 +35,15 @@ function pj(c: Ctx, name: string, raw?: unknown): any {
 	return value === undefined ? undefined : convertFields(value, c.convert);
 }
 
+/** Converts an input item, reporting which item / value failed (errors would otherwise lose their context). */
+function conv(c: Ctx, idx: number): any {
+	try {
+		return convertFields(c.items[idx].json, c.convert);
+	} catch (error) {
+		throw new NodeOperationError(c.fn.getNode(), (error as Error).message, { itemIndex: idx });
+	}
+}
+
 function coll(c: Ctx) {
 	const o = c.options;
 	const opts: any = {};
@@ -130,14 +139,14 @@ const handlers: Record<string, Handler> = {
 	},
 	'document.insertOne': async (c) => {
 		const doc =
-			p(c, 'documentSource', 'json') === 'input' ? convertFields(c.items[c.i].json, c.convert) : pj(c, 'document');
+			p(c, 'documentSource', 'json') === 'input' ? conv(c, c.i) : pj(c, 'document');
 		const r = await coll(c).insertOne(doc as any, writeOpts(c));
 		return one({ acknowledged: r.acknowledged, insertedId: r.insertedId });
 	},
 	'document.insertMany': async (c) => {
 		const docs =
 			p(c, 'documentSource', 'json') === 'input'
-				? c.items.map((it) => convertFields(it.json, c.convert))
+				? c.items.map((_, idx) => conv(c, idx))
 				: pj(c, 'documents');
 		if (!Array.isArray(docs)) throw new NodeOperationError(c.fn.getNode(), '"Documents" must be a JSON array');
 		const r = await coll(c).insertMany(docs as any[], writeOpts(c));
@@ -220,7 +229,7 @@ const handlers: Record<string, Handler> = {
 	'bulk.bulkWrite': async (c) => {
 		const ops =
 			p(c, 'bulkSource', 'json') === 'input'
-				? c.items.map((it) => convertFields(it.json, c.convert))
+				? c.items.map((_, idx) => conv(c, idx))
 				: pj(c, 'bulkOperations');
 		if (!Array.isArray(ops)) throw new NodeOperationError(c.fn.getNode(), '"Operations" must be a JSON array');
 		return one(bulkSummary(await coll(c).bulkWrite(ops as any[], { ordered: p(c, 'ordered', true), ...sess(c) })));
@@ -229,7 +238,7 @@ const handlers: Record<string, Handler> = {
 		const keys = [...toFieldSet(p(c, 'matchFields', '_id'))];
 		const replace = p(c, 'upsertMode', 'set') === 'replace';
 		const ops = c.items.map((it, idx) => {
-			const doc = convertFields(it.json, c.convert) as Record<string, any>;
+			const doc = conv(c, idx) as Record<string, any>;
 			const filter: Record<string, any> = {};
 			for (const k of keys) {
 				if (doc[k] === undefined) {

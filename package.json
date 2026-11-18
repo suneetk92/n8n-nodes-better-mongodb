@@ -1,61 +1,61 @@
 {
-    "name": "n8n-nodes-better-mongodb",
-    "version": "1.1.0",
-    "description": "n8n MongoDB nodes: full CRUD, aggregation, bulk writes, transactions, indexes, Atlas/vector search, GridFS, BSON types (ObjectId, Date, Decimal128, ...) and a change stream trigger",
-    "license": "MIT",
-    "keywords": [
-        "n8n-community-node-package",
-        "mongodb",
-        "change-stream",
-        "aggregation",
-        "bson",
-        "objectid"
-    ],
-    "author": {
-        "name": "Suneet Kumar",
-        "email": "suneetk92@gmail.com"
-    },
-    "scripts": {
-        "build": "n8n-node build",
-        "build:watch": "tsc --watch",
-        "dev": "n8n-node dev",
-        "lint": "n8n-node lint",
-        "lint:fix": "n8n-node lint --fix",
-        "release": "n8n-node release",
-        "prepublishOnly": "n8n-node prerelease"
-    },
-    "files": [
-        "dist",
-        "!dist/tsconfig.tsbuildinfo"
-    ],
-    "publishConfig": {
-        "access": "public"
-    },
-    "n8n": {
-        "n8nNodesApiVersion": 1,
-        "strict": false,
-        "credentials": [],
-        "nodes": [
-            "dist/nodes/BetterMongoDb/BetterMongoDb.node.js",
-            "dist/nodes/BetterMongoDb/BetterMongoDbTrigger.node.js"
-        ]
-    },
-    "dependencies": {
-        "mongodb": "7.9.0"
-    },
-    "devDependencies": {
-        "@n8n/node-cli": "*",
-        "eslint": "9.32.0",
-        "prettier": "3.6.2",
-        "release-it": "^21.1.0",
-        "typescript": "5.9.2"
-    },
-    "peerDependencies": {
-        "n8n-workflow": "*"
-    },
-    "homepage": "https://github.com/suneetk92/n8n-nodes-better-mongodb",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/suneetk92/n8n-nodes-better-mongodb.git"
-    }
+	"name": "n8n-nodes-better-mongodb",
+	"version": "1.1.0",
+	"description": "n8n MongoDB nodes: full CRUD, aggregation, bulk writes, transactions, indexes, Atlas/vector search, GridFS, BSON types (ObjectId, Date, Decimal128, ...) and a change stream trigger",
+	"license": "MIT",
+	"keywords": [
+		"n8n-community-node-package",
+		"mongodb",
+		"change-stream",
+		"aggregation",
+		"bson",
+		"objectid"
+	],
+	"author": {
+		"name": "Suneet Kumar",
+		"email": "suneetk92@gmail.com"
+	},
+	"scripts": {
+		"build": "n8n-node build",
+		"build:watch": "tsc --watch",
+		"dev": "n8n-node dev",
+		"lint": "n8n-node lint",
+		"lint:fix": "n8n-node lint --fix",
+		"release": "n8n-node release",
+		"prepublishOnly": "n8n-node prerelease"
+	},
+	"files": [
+		"dist",
+		"!dist/tsconfig.tsbuildinfo"
+	],
+	"publishConfig": {
+		"access": "public"
+	},
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"strict": false,
+		"credentials": [],
+		"nodes": [
+			"dist/nodes/BetterMongoDb/BetterMongoDb.node.js",
+			"dist/nodes/BetterMongoDb/BetterMongoDbTrigger.node.js"
+		]
+	},
+	"dependencies": {
+		"mongodb": "7.9.0"
+	},
+	"devDependencies": {
+		"@n8n/node-cli": "1.3.0",
+		"eslint": "9.39.5",
+		"prettier": "3.10.1",
+		"release-it": "21.1.2",
+		"typescript": "6.0.3"
+	},
+	"peerDependencies": {
+		"n8n-workflow": "3.3.0"
+	},
+	"homepage": "https://github.com/suneetk92/n8n-nodes-better-mongodb",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/suneetk92/n8n-nodes-better-mongodb.git"
+	}
 }

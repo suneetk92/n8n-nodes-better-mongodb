@@ -101,7 +101,7 @@ const toDate = (field: string) => (v: unknown) => {
 	if (typeof v !== 'string') return v;
 	const d = new Date(v);
 	if (Number.isNaN(d.getTime())) {
-		throw new Error(`Convert Date Fields: value "${v}" of field "${field}" is not a valid date`);
+		throw new Error(`Convert Date Fields: field "${field}" has value ${JSON.stringify(v)}, which is not a valid date`);
 	}
 	return d;
 };
