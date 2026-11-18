@@ -3,7 +3,7 @@ import { GridFSBucket, ObjectId } from 'mongodb';
 import type { ClientSession, Db, MongoClient } from 'mongodb';
 import { NodeOperationError } from 'n8n-workflow';
 import type { IBinaryKeyData, IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { asObject, convertFields, parseEjson, toFieldSet } from './GenericFunctions';
+import { InvalidDateError, asObject, convertFields, parseEjson, toFieldSet } from './GenericFunctions';
 import type { ConvertOptions } from './GenericFunctions';
 
 export interface Ctx {
@@ -35,14 +35,34 @@ function pj(c: Ctx, name: string, raw?: unknown): any {
 	return value === undefined ? undefined : convertFields(value, c.convert);
 }
 
-/** Converts an input item, reporting which item / value failed (errors would otherwise lose their context). */
-function conv(c: Ctx, idx: number): any {
-	try {
-		return convertFields(c.items[idx].json, c.convert);
-	} catch (error) {
-		throw new NodeOperationError(c.fn.getNode(), (error as Error).message, { itemIndex: idx });
-	}
+export interface Skipped {
+	item: number;
+	reason: string;
 }
+
+/**
+ * Converts the given input items. With Options > On Invalid Date = "Skip Item", items whose date fields
+ * cannot be parsed are left out and reported in `skipped` instead of failing the whole run.
+ */
+function convMany(c: Ctx, idxs: number[]): { docs: any[]; kept: number[]; skipped: Skipped[] } {
+	const skip = c.options.invalidDates === 'skip';
+	const docs: any[] = [];
+	const kept: number[] = [];
+	const skipped: Skipped[] = [];
+	for (const idx of idxs) {
+		try {
+			docs.push(convertFields(c.items[idx].json, c.convert));
+			kept.push(idx);
+		} catch (error) {
+			if (skip && error instanceof InvalidDateError) skipped.push({ item: idx, reason: error.message });
+			else throw new NodeOperationError(c.fn.getNode(), (error as Error).message, { itemIndex: idx });
+		}
+	}
+	return { docs, kept, skipped };
+}
+
+const allIdx = (c: Ctx) => c.items.map((_, i) => i);
+const skippedOut = (skipped: Skipped[]) => ({ skippedCount: skipped.length, skipped });
 
 function coll(c: Ctx) {
 	const o = c.options;
@@ -138,19 +158,29 @@ const handlers: Record<string, Handler> = {
 		return doc ? one(doc) : [];
 	},
 	'document.insertOne': async (c) => {
-		const doc =
-			p(c, 'documentSource', 'json') === 'input' ? conv(c, c.i) : pj(c, 'document');
+		let doc: any;
+		if (p(c, 'documentSource', 'json') === 'input') {
+			const { docs, skipped } = convMany(c, [c.i]);
+			if (!docs.length) return one({ acknowledged: false, insertedId: null, ...skippedOut(skipped) });
+			doc = docs[0];
+		} else doc = pj(c, 'document');
 		const r = await coll(c).insertOne(doc as any, writeOpts(c));
 		return one({ acknowledged: r.acknowledged, insertedId: r.insertedId });
 	},
 	'document.insertMany': async (c) => {
-		const docs =
-			p(c, 'documentSource', 'json') === 'input'
-				? c.items.map((_, idx) => conv(c, idx))
-				: pj(c, 'documents');
+		let docs: any;
+		let skipped: Skipped[] = [];
+		if (p(c, 'documentSource', 'json') === 'input') ({ docs, skipped } = convMany(c, allIdx(c)));
+		else docs = pj(c, 'documents');
 		if (!Array.isArray(docs)) throw new NodeOperationError(c.fn.getNode(), '"Documents" must be a JSON array');
+		if (!docs.length && skipped.length) return one({ acknowledged: false, insertedCount: 0, ...skippedOut(skipped) });
 		const r = await coll(c).insertMany(docs as any[], writeOpts(c));
-		return one({ acknowledged: r.acknowledged, insertedCount: r.insertedCount, insertedIds: Object.values(r.insertedIds) });
+		return one({
+			acknowledged: r.acknowledged,
+			insertedCount: r.insertedCount,
+			insertedIds: Object.values(r.insertedIds),
+			...(skipped.length ? skippedOut(skipped) : {}),
+		});
 	},
 	'document.updateOne': async (c) => {
 		const r = await coll(c).updateOne(pj(c, 'filter') ?? {}, pj(c, 'update'), {
@@ -227,18 +257,21 @@ const handlers: Record<string, Handler> = {
 
 	// ---------------- bulk ----------------
 	'bulk.bulkWrite': async (c) => {
-		const ops =
-			p(c, 'bulkSource', 'json') === 'input'
-				? c.items.map((_, idx) => conv(c, idx))
-				: pj(c, 'bulkOperations');
+		let ops: any;
+		let skipped: Skipped[] = [];
+		if (p(c, 'bulkSource', 'json') === 'input') ({ docs: ops, skipped } = convMany(c, allIdx(c)));
+		else ops = pj(c, 'bulkOperations');
 		if (!Array.isArray(ops)) throw new NodeOperationError(c.fn.getNode(), '"Operations" must be a JSON array');
-		return one(bulkSummary(await coll(c).bulkWrite(ops as any[], { ordered: p(c, 'ordered', true), ...sess(c) })));
+		if (!ops.length && skipped.length) return one({ acknowledged: false, ...skippedOut(skipped) });
+		const r = await coll(c).bulkWrite(ops as any[], { ordered: p(c, 'ordered', true), ...sess(c) });
+		return one({ ...bulkSummary(r), ...(skipped.length ? skippedOut(skipped) : {}) });
 	},
 	'bulk.bulkUpsert': async (c) => {
 		const keys = [...toFieldSet(p(c, 'matchFields', '_id'))];
 		const replace = p(c, 'upsertMode', 'set') === 'replace';
-		const ops = c.items.map((it, idx) => {
-			const doc = conv(c, idx) as Record<string, any>;
+		const { docs: converted, kept, skipped } = convMany(c, allIdx(c));
+		const ops = converted.map((doc: Record<string, any>, n: number) => {
+			const idx = kept[n];
 			const filter: Record<string, any> = {};
 			for (const k of keys) {
 				if (doc[k] === undefined) {
@@ -251,7 +284,9 @@ const handlers: Record<string, Handler> = {
 			if (keys.includes('_id')) delete set._id;
 			return { updateOne: { filter, update: { $set: set }, upsert: true } };
 		});
-		return one(bulkSummary(await coll(c).bulkWrite(ops as any[], { ordered: p(c, 'ordered', true), ...sess(c) })));
+		if (!ops.length && skipped.length) return one({ acknowledged: false, ...skippedOut(skipped) });
+		const r = await coll(c).bulkWrite(ops as any[], { ordered: p(c, 'ordered', true), ...sess(c) });
+		return one({ ...bulkSummary(r), ...(skipped.length ? skippedOut(skipped) : {}) });
 	},
 	'database.clientBulkWrite': async (c) => {
 		const models = pj(c, 'clientBulkOperations');

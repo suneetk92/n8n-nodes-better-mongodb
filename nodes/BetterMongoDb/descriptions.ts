@@ -611,6 +611,16 @@ export const properties: INodeProperties[] = [
 				description: 'Comma-separated field names (at any depth) whose 24-hex string values are converted to ObjectId. Set empty to disable. Use {"$oid": "..."} for explicit conversion anywhere.',
 			},
 			{
+				displayName: 'On Invalid Date',
+				name: 'invalidDates',
+				type: 'options',
+				options: [
+					{ name: 'Fail the Node', value: 'error', description: 'Stop with an error naming the item and value' },
+					{ name: 'Skip Item', value: 'skip', description: 'Leave out items whose Convert Date Fields value is not a valid date and list them in "skipped" (input-item sources only)' },
+				],
+				default: 'error',
+			},
+			{
 				displayName: 'Output Format',
 				name: 'outputFormat',
 				type: 'options',

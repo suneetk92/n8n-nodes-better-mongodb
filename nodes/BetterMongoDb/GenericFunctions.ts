@@ -97,11 +97,13 @@ function mapDeep(v: unknown, fn: (x: unknown) => unknown): unknown {
 }
 
 const toObjectId = (v: unknown) => (typeof v === 'string' && HEX24.test(v) ? new ObjectId(v) : v);
+export class InvalidDateError extends Error {}
+
 const toDate = (field: string) => (v: unknown) => {
 	if (typeof v !== 'string') return v;
 	const d = new Date(v);
 	if (Number.isNaN(d.getTime())) {
-		throw new Error(`Convert Date Fields: field "${field}" has value ${JSON.stringify(v)}, which is not a valid date`);
+		throw new InvalidDateError(`Convert Date Fields: field "${field}" has value ${JSON.stringify(v)}, which is not a valid date`);
 	}
 	return d;
 };

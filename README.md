@@ -37,7 +37,7 @@ Requires MongoDB 4.2+ (tested against 9.0) and Node.js 20.19+ (driver 7.9). On 9
 - `$function`, `$accumulator` and `$where` are no longer deprecated.
 - Time series collections can be renamed.
 - Per-operation `querySettings` is not exposed as an option (the driver does not forward it); send it with *Run Command*.
-- Time series `timeField` must be a BSON Date: list it in *Convert Date Fields* or send `{"$date": "..."}`.
+- Time series `timeField` must be a BSON Date: list it in *Convert Date Fields* or send `{"$date": "..."}`. Set *On Invalid Date* to *Skip Item* to leave out rows with unparseable dates (they are listed under `skipped` in the output) instead of failing the whole batch.
 
 ## Not included
 

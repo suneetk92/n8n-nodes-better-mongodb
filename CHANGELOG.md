@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.0
+
+- New option **On Invalid Date** (Options): *Skip Item* leaves out input items whose *Convert Date Fields* value is not a valid date and reports them in `skippedCount` / `skipped` (item index and reason) instead of failing the batch. Applies to insertOne, insertMany, bulkWrite and bulkUpsert with input-item sources. Default stays *Fail the Node*.
+
 ## 1.1.3
 
 - Publish workflow now sets the package version from the git tag, so the npm version always matches the tag (1.1.1 and 1.1.2 failed to publish because `package.json` still said 1.1.0).
