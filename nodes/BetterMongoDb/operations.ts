@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { GridFSBucket, ObjectId } from 'mongodb';
+import { GridFSBucket, MongoBulkWriteError, ObjectId } from 'mongodb';
 import type { ClientSession, Db, MongoClient } from 'mongodb';
 import { NodeOperationError } from 'n8n-workflow';
 import type { IBinaryKeyData, IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
@@ -182,18 +182,42 @@ const handlers: Record<string, Handler> = {
 	},
 	'document.insertMany': async (c) => {
 		let docs: any;
+		let kept: number[] | undefined;
 		let skipped: Skipped[] = [];
-		if (p(c, 'documentSource', 'json') === 'input') ({ docs, skipped } = convMany(c, allIdx(c), true));
+		if (p(c, 'documentSource', 'json') === 'input') ({ docs, kept, skipped } = convMany(c, allIdx(c), true));
 		else docs = pj(c, 'documents');
 		if (!Array.isArray(docs)) throw new NodeOperationError(c.fn.getNode(), '"Documents" must be a JSON array');
 		if (!docs.length && skipped.length) return one({ acknowledged: false, insertedCount: 0, ...skippedOut(skipped) });
-		const r = await coll(c).insertMany(docs as any[], writeOpts(c));
-		return one({
-			acknowledged: r.acknowledged,
-			insertedCount: r.insertedCount,
-			insertedIds: Object.values(r.insertedIds),
-			...(skipped.length ? skippedOut(skipped) : {}),
-		});
+		const wo = writeOpts(c);
+		try {
+			const r = await coll(c).insertMany(docs as any[], wo);
+			return one({
+				acknowledged: r.acknowledged,
+				insertedCount: r.insertedCount,
+				insertedIds: Object.values(r.insertedIds),
+				...(skipped.length ? skippedOut(skipped) : {}),
+			});
+		} catch (error) {
+			// Unordered inserts persist every valid document; report the failures instead of failing the node.
+			// In a transaction everything is rolled back, so the error must propagate.
+			const fail = () => new NodeOperationError(c.fn.getNode(), error as Error);
+			if (!(error instanceof MongoBulkWriteError) || wo.ordered !== false || c.session) throw fail();
+			const writeErrors = ([] as any[]).concat(error.writeErrors ?? []);
+			if (!writeErrors.length) throw fail(); // e.g. a write concern error, not per-document failures
+			const failed = writeErrors.map((e) => ({
+				item: kept ? kept[e.index] : e.index,
+				code: e.code,
+				reason: e.errmsg,
+			}));
+			return one({
+				acknowledged: true,
+				partial: true,
+				insertedCount: error.insertedCount,
+				failedCount: failed.length,
+				failed,
+				...(skipped.length ? skippedOut(skipped) : {}),
+			});
+		}
 	},
 	'document.updateOne': async (c) => {
 		const r = await coll(c).updateOne(pj(c, 'filter') ?? {}, pj(c, 'update'), {
